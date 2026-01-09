@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>좀비 아포칼립스 생존</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: url('images/background.png') center/cover no-repeat fixed;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #e5e7eb;
+            overflow: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 0;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 500px;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+        }
+
+        .stat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .stat-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stat-value {
+            font-size: 13px;
+            font-weight: 700;
+            color: #d1d5db;
+        }
+
+        .stat-icon {
+            font-size: 20px;
+        }
+
+        .stat-bar-container {
+            height: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .stat-bar {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease, background-color 0.3s ease;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .food-bar { background: linear-gradient(90deg, #9ca3af 0%, #d1d5db 100%); }
+        .weapon-bar { background: linear-gradient(90deg, #9ca3af 0%, #d1d5db 100%); }
+        .infection-bar { background: linear-gradient(90deg, #9ca3af 0%, #d1d5db 100%); }
+        .morale-bar { background: linear-gradient(90deg, #9ca3af 0%, #d1d5db 100%); }
+
+        .card-container {
+            perspective: 1000px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: #f9fafb;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.8), 0 10px 30px rgba(0, 0, 0, 0.6);
+            text-align: center;
+            position: relative;
+            transition: transform 0.3s ease;
+            cursor: grab;
+            user-select: none;
+            border: 3px solid #374151;
+        }
+
+        .card.dragging {
+            cursor: grabbing;
+        }
+
+        .card.swipe-left {
+            animation: swipeLeft 0.5s ease-out forwards;
+        }
+
+        .card.swipe-right {
+            animation: swipeRight 0.5s ease-out forwards;
+        }
+
+        @keyframes swipeLeft {
+            to {
+                transform: translateX(-150%) rotate(-30deg);
+                opacity: 0;
+            }
+        }
+
+        @keyframes swipeRight {
+            to {
+                transform: translateX(150%) rotate(30deg);
+                opacity: 0;
+            }
+        }
+
+        .card-image {
+            width: 100%;
+            padding-top: 100%; /* 1:1 비율 정사각형 */
+            border-radius: 12px;
+            margin: 0 auto 25px;
+            background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-image-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 80px;
+        }
+
+        .card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .card-name {
+            font-size: 22px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .card-question {
+            font-size: 16px;
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        .choices {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .choice-btn {
+            flex: 1;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+        }
+
+        .choice-left {
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+            border: 2px solid #4b5563;
+        }
+
+        .choice-right {
+            background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+            border: 2px solid #4b5563;
+        }
+
+        .choice-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .choice-btn:active {
+            transform: translateY(0);
+        }
+
+        .game-over {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .game-over.show {
+            display: flex;
+        }
+
+        .game-over-content {
+            background: rgba(31, 41, 55, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 400px;
+            color: #e5e7eb;
+            border: 2px solid #374151;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+        }
+
+        .game-over-title {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #dc2626;
+            text-shadow: 0 2px 10px rgba(220, 38, 38, 0.5);
+            transition: color 0.3s ease, text-shadow 0.3s ease;
+        }
+
+        .title-screen {
+            display: flex;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            backdrop-filter: blur(10px);
+        }
+
+        .title-screen.hidden {
+            display: none;
+        }
+
+        .title-content {
+            text-align: center;
+            animation: fadeIn 1s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .title-logo {
+            font-size: 64px;
+            font-weight: bold;
+            color: #dc2626;
+            text-shadow: 0 0 20px rgba(220, 38, 38, 0.8),
+                         0 0 40px rgba(220, 38, 38, 0.4);
+            margin-bottom: 20px;
+            letter-spacing: 3px;
+        }
+
+        .title-subtitle {
+            font-size: 24px;
+            color: #9ca3af;
+            margin-bottom: 50px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+        }
+
+        .start-btn {
+            padding: 20px 60px;
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            color: white;
+            border: 2px solid #dc2626;
+            border-radius: 12px;
+            font-size: 24px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 10px 30px rgba(220, 38, 38, 0.4);
+        }
+
+        .start-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(220, 38, 38, 0.6);
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .start-btn:active {
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 600px) {
+            .title-logo {
+                font-size: 42px;
+            }
+
+            .title-subtitle {
+                font-size: 18px;
+                margin-bottom: 40px;
+            }
+
+            .start-btn {
+                padding: 15px 40px;
+                font-size: 20px;
+            }
+        }
+
+        .game-over-message {
+            font-size: 18px;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .restart-btn {
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+            color: white;
+            border: 2px solid #4b5563;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .restart-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .day-counter {
+            text-align: center;
+            font-size: 18px;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        @media (max-width: 600px) {
+            .game-container {
+                padding: 15px;
+            }
+
+            .stats-container {
+                gap: 10px;
+                padding: 15px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .card-image-content {
+                font-size: 60px;
+            }
+
+            .card-name {
+                font-size: 20px;
+            }
+
+            .card-question {
+                font-size: 14px;
+            }
+
+            .choice-btn {
+                padding: 12px 20px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="title-screen" id="titleScreen">
+        <div class="title-content">
+            <div class="title-logo">🧟 좀비 아포칼립스</div>
+            <div class="title-subtitle">THE SURVIVOR</div>
+            <button class="start-btn" onclick="startGame()">게임 시작</button>
+        </div>
+    </div>
+
+    <div class="game-container">
+        <div class="day-counter">
+            생존 일수: <span id="dayCount">1</span>일
+        </div>
+
+        <div class="stats-container">
+            <div class="stat">
+                <div class="stat-header">
+                    <div class="stat-label">
+                        <span class="stat-icon">🍖</span>
+                        <span>식량</span>
+                    </div>
+                    <span class="stat-value" id="foodValue">50</span>
+                </div>
+                <div class="stat-bar-container">
+                    <div class="stat-bar food-bar" id="foodBar" style="width: 50%"></div>
+                </div>
+            </div>
+            <div class="stat">
+                <div class="stat-header">
+                    <div class="stat-label">
+                        <span class="stat-icon">🔫</span>
+                        <span>무기</span>
+                    </div>
+                    <span class="stat-value" id="weaponValue">50</span>
+                </div>
+                <div class="stat-bar-container">
+                    <div class="stat-bar weapon-bar" id="weaponBar" style="width: 50%"></div>
+                </div>
+            </div>
+            <div class="stat">
+                <div class="stat-header">
+                    <div class="stat-label">
+                        <span class="stat-icon">🧪</span>
+                        <span>감염도</span>
+                    </div>
+                    <span class="stat-value" id="infectionValue">50</span>
+                </div>
+                <div class="stat-bar-container">
+                    <div class="stat-bar infection-bar" id="infectionBar" style="width: 50%"></div>
+                </div>
+            </div>
+            <div class="stat">
+                <div class="stat-header">
+                    <div class="stat-label">
+                        <span class="stat-icon">❤️</span>
+                        <span>사기</span>
+                    </div>
+                    <span class="stat-value" id="moraleValue">50</span>
+                </div>
+                <div class="stat-bar-container">
+                    <div class="stat-bar morale-bar" id="moraleBar" style="width: 50%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-container">
+            <div class="card" id="eventCard">
+                <div class="card-image" id="cardImage">
+                    <div class="card-image-content" id="cardImageContent">👤</div>
+                </div>
+                <div class="card-name" id="cardName">캐릭터 이름</div>
+                <div class="card-question" id="cardQuestion">질문 내용</div>
+                <div class="choices">
+                    <button class="choice-btn choice-left" id="leftChoice">선택 1</button>
+                    <button class="choice-btn choice-right" id="rightChoice">선택 2</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="game-over" id="gameOver">
+        <div class="game-over-content">
+            <div class="game-over-title">게임 오버</div>
+            <div class="game-over-message" id="gameOverMessage"></div>
+            <button class="restart-btn" onclick="restartGame()">다시 시작</button>
+        </div>
+    </div>
+
+    <script>
+        // 게임 데이터
+        const events = [
+            // 대표 등장인물 - 자주 등장
+            {
+                name: "경비 책임자",
+                image: "images/security_chief.png",
+                emoji: "🛡️",
+                question: "외곽에서 좀비 무리가 접근하고 있습니다. 정면으로 막을까요, 아니면 우회시킬까요?",
+                leftChoice: "정면 방어",
+                rightChoice: "우회 유도",
+                leftEffect: { food: -5, weapon: -20, infection: 5, morale: 10 },
+                rightEffect: { food: -10, weapon: -5, infection: 15, morale: -5 }
+            },
+            {
+                name: "경비 책임자",
+                image: "images/security_chief.png",
+                emoji: "🛡️",
+                question: "무기고의 탄약이 떨어지고 있습니다. 근처 군부대 잔해를 수색할까요?",
+                leftChoice: "수색 나간다",
+                rightChoice: "탄약 아껴쓰기",
+                leftEffect: { food: -5, weapon: 25, infection: 10, morale: 5 },
+                rightEffect: { food: 0, weapon: -15, infection: 0, morale: -10 }
+            },
+            {
+                name: "의료 담당자",
+                image: "images/medical_officer.png",
+                emoji: "⚕️",
+                question: "감염 의심 환자가 발생했습니다. 격리 조치를 취할까요?",
+                leftChoice: "즉시 격리",
+                rightChoice: "경과 관찰",
+                leftEffect: { food: -5, weapon: 0, infection: -15, morale: -10 },
+                rightEffect: { food: 0, weapon: 0, infection: 20, morale: 5 }
+            },
+            {
+                name: "의료 담당자",
+                image: "images/medical_officer.png",
+                emoji: "⚕️",
+                question: "의약품이 부족합니다. 근처 약국을 급습할까요?",
+                leftChoice: "약국 급습",
+                rightChoice: "대체 방법 모색",
+                leftEffect: { food: 0, weapon: -15, infection: -20, morale: 10 },
+                rightEffect: { food: -5, weapon: 0, infection: 10, morale: -5 }
+            },
+            {
+                name: "보급 담당자",
+                image: "images/supply_officer.png",
+                emoji: "📦",
+                question: "외곽 창고에 식량이 남아있다는 정보가 있습니다. 수색팀을 보낼까요?",
+                leftChoice: "수색팀 파견",
+                rightChoice: "위험해 보임",
+                leftEffect: { food: 25, weapon: -5, infection: 10, morale: 10 },
+                rightEffect: { food: -10, weapon: 0, infection: 0, morale: -10 }
+            },
+            {
+                name: "보급 담당자",
+                image: "images/supply_officer.png",
+                emoji: "📦",
+                question: "식량 배급을 줄여야 할 상황입니다. 어떻게 할까요?",
+                leftChoice: "배급 축소",
+                rightChoice: "현상 유지",
+                leftEffect: { food: 15, weapon: 0, infection: 0, morale: -20 },
+                rightEffect: { food: -15, weapon: 0, infection: 5, morale: 10 }
+            },
+            {
+                name: "시민 대표",
+                image: "images/citizen_leader.png",
+                emoji: "👥",
+                question: "생존자들 사이에서 탈출을 원하는 목소리가 커지고 있습니다.",
+                leftChoice: "이곳을 지킨다",
+                rightChoice: "이동 계획 수립",
+                leftEffect: { food: 5, weapon: 5, infection: 0, morale: -15 },
+                rightEffect: { food: -15, weapon: -10, infection: 5, morale: 20 }
+            },
+            {
+                name: "시민 대표",
+                image: "images/citizen_leader.png",
+                emoji: "👥",
+                question: "다른 생존자 그룹과 동맹 제안이 들어왔습니다. 받아들일까요?",
+                leftChoice: "동맹 체결",
+                rightChoice: "독자 행동",
+                leftEffect: { food: 10, weapon: 10, infection: 15, morale: 15 },
+                rightEffect: { food: -5, weapon: 5, infection: -5, morale: -10 }
+            },
+            // 이벤트성 등장인물
+            {
+                name: "어린아이",
+                image: "images/child.png",
+                emoji: "👧",
+                question: "부모를 잃은 아이가 우리 그룹에 합류하고 싶어 합니다.",
+                leftChoice: "받아들인다",
+                rightChoice: "거절한다",
+                leftEffect: { food: -15, weapon: 0, infection: 0, morale: 25 },
+                rightEffect: { food: 0, weapon: 0, infection: 0, morale: -30 }
+            },
+            {
+                name: "연구원",
+                image: "images/researcher.png",
+                emoji: "🔬",
+                question: "전직 바이러스 연구원이 감염 치료제 개발을 시도하겠다고 합니다.",
+                leftChoice: "연구 지원",
+                rightChoice: "자원 낭비",
+                leftEffect: { food: -20, weapon: -10, infection: -25, morale: 20 },
+                rightEffect: { food: 5, weapon: 5, infection: 5, morale: -15 }
+            },
+            {
+                name: "연구원",
+                image: "images/researcher.png",
+                emoji: "🔬",
+                question: "좀비 샘플을 채취해 연구하면 약점을 찾을 수 있을지도 모릅니다.",
+                leftChoice: "샘플 채취",
+                rightChoice: "너무 위험해",
+                leftEffect: { food: -5, weapon: -15, infection: 20, morale: -10 },
+                rightEffect: { food: 0, weapon: 0, infection: 0, morale: 5 }
+            },
+            {
+                name: "정보상",
+                image: "images/informant.png",
+                emoji: "🕵️",
+                question: "안전 지대 정보를 가진 상인이 식량과 교환하자고 합니다.",
+                leftChoice: "정보 구매",
+                rightChoice: "믿을 수 없어",
+                leftEffect: { food: -20, weapon: 0, infection: 0, morale: 20 },
+                rightEffect: { food: 5, weapon: 5, infection: 0, morale: -10 }
+            },
+            {
+                name: "정보상",
+                image: "images/informant.png",
+                emoji: "🕵️",
+                question: "근처에 무기 밀매상이 있다는 정보를 입수했습니다. 거래할까요?",
+                leftChoice: "무기 거래",
+                rightChoice: "거래 거절",
+                leftEffect: { food: -15, weapon: 25, infection: 5, morale: 0 },
+                rightEffect: { food: 0, weapon: -5, infection: 0, morale: -5 }
+            }
+        ];
+
+        // 게임 상태
+        let stats = {
+            food: 50,
+            weapon: 50,
+            infection: 50,
+            morale: 50
+        };
+
+        let currentEventIndex = 0;
+        let dayCount = 1;
+        let usedEvents = [];
+        let researchSupported = false; // 백신 연구 지원 여부
+
+        // 초기화
+        function init() {
+            shuffleEvents();
+            loadEvent();
+            updateStats();
+        }
+
+        // 게임 시작
+        function startGame() {
+            document.getElementById('titleScreen').classList.add('hidden');
+        }
+
+        // 이벤트 섞기
+        function shuffleEvents() {
+            for (let i = events.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [events[i], events[j]] = [events[j], events[i]];
+            }
+        }
+
+        // 이벤트 로드
+        function loadEvent() {
+            if (currentEventIndex >= events.length) {
+                shuffleEvents();
+                currentEventIndex = 0;
+            }
+
+            const event = events[currentEventIndex];
+            
+            const cardImageContent = document.getElementById('cardImageContent');
+            cardImageContent.innerHTML = event.emoji;
+            
+            // 이미지가 실제로 존재할 경우 사용
+            const img = new Image();
+            img.src = event.image;
+            img.onload = function() {
+                cardImageContent.innerHTML = `<img src="${event.image}" alt="${event.name}">`;
+            };
+            
+            document.getElementById('cardName').textContent = event.name;
+            document.getElementById('cardQuestion').textContent = event.question;
+            document.getElementById('leftChoice').textContent = event.leftChoice;
+            document.getElementById('rightChoice').textContent = event.rightChoice;
+        }
+
+        // 선택 처리
+        function makeChoice(isLeft) {
+            const event = events[currentEventIndex];
+            const effect = isLeft ? event.leftEffect : event.rightEffect;
+            
+            // 연구원 연구 지원 선택 추적
+            if (event.name === "연구원" && event.question.includes("치료제 개발") && isLeft) {
+                researchSupported = true;
+            }
+            
+            // 카드 애니메이션
+            const card = document.getElementById('eventCard');
+            card.classList.add(isLeft ? 'swipe-left' : 'swipe-right');
+            
+            // 능력치 업데이트
+            setTimeout(() => {
+                stats.food += effect.food;
+                stats.weapon += effect.weapon;
+                stats.infection += effect.infection;
+                stats.morale += effect.morale;
+                
+                // 능력치 제한
+                stats.food = Math.max(0, Math.min(100, stats.food));
+                stats.weapon = Math.max(0, Math.min(100, stats.weapon));
+                stats.infection = Math.max(0, Math.min(100, stats.infection));
+                stats.morale = Math.max(0, Math.min(100, stats.morale));
+                
+                updateStats();
+                checkGameOver();
+                
+                if (!document.getElementById('gameOver').classList.contains('show')) {
+                    dayCount++;
+                    document.getElementById('dayCount').textContent = dayCount;
+                    
+                    // 히든 엔딩 체크
+                    checkHiddenEndings();
+                    
+                    if (!document.getElementById('gameOver').classList.contains('show')) {
+                        currentEventIndex++;
+                        card.classList.remove('swipe-left', 'swipe-right');
+                        loadEvent();
+                    }
+                }
+            }, 500);
+        }
+
+        // 능력치 업데이트
+        function updateStats() {
+            document.getElementById('foodBar').style.width = stats.food + '%';
+            document.getElementById('weaponBar').style.width = stats.weapon + '%';
+            document.getElementById('infectionBar').style.width = stats.infection + '%';
+            document.getElementById('moraleBar').style.width = stats.morale + '%';
+            
+            document.getElementById('foodValue').textContent = stats.food;
+            document.getElementById('weaponValue').textContent = stats.weapon;
+            document.getElementById('infectionValue').textContent = stats.infection;
+            document.getElementById('moraleValue').textContent = stats.morale;
+        }
+
+        // 히든 엔딩 체크
+        function checkHiddenEndings() {
+            let message = '';
+            let isHidden = false;
+            
+            // 백신 개발 엔딩 (연구 지원 + 20일 생존)
+            if (researchSupported && dayCount >= 20) {
+                message = '🎉 연구원이 백신 개발에 성공했습니다! 감염을 치료할 수 있게 되었고, 인류에게 희망이 찾아왔습니다. 당신의 결단이 세상을 구했습니다!';
+                isHidden = true;
+            }
+            // 군 구조대 엔딩 (50일 생존)
+            else if (dayCount >= 50) {
+                message = '🚁 군 구조대가 당신의 신호를 발견했습니다! 헬기가 도착해 생존자 전원을 안전 지대로 이송합니다. 당신은 50일간의 생존 끝에 구조되었습니다!';
+                isHidden = true;
+            }
+            
+            if (isHidden) {
+                const gameOverTitle = document.querySelector('.game-over-title');
+                gameOverTitle.textContent = '🏆 히든 엔딩 달성!';
+                gameOverTitle.style.color = '#10b981';
+                gameOverTitle.style.textShadow = '0 2px 10px rgba(16, 185, 129, 0.5)';
+                
+                document.getElementById('gameOverMessage').textContent = 
+                    message + ` 생존 일수: ${dayCount}일`;
+                document.getElementById('gameOver').classList.add('show');
+            }
+        }
+
+        // 게임 오버 체크
+        function checkGameOver() {
+            let message = '';
+            
+            if (stats.food <= 0) {
+                message = '식량이 바닥났습니다. 굶주림으로 인해 생존자들이 쓰러졌습니다...';
+            } else if (stats.food >= 100) {
+                message = '식량이 넘쳐나 보관에 실패했습니다. 썩은 음식으로 인해 모두 병에 걸렸습니다...';
+            } else if (stats.weapon <= 0) {
+                message = '무기가 없습니다. 좀비의 습격을 막을 수 없었습니다...';
+            } else if (stats.weapon >= 100) {
+                message = '무기에만 집중하다 내부 분열이 일어났습니다...';
+            } else if (stats.infection <= 0) {
+                message = '과도한 격리 조치로 생존자들이 뿔뿔이 흩어졌습니다...';
+            } else if (stats.infection >= 100) {
+                message = '감염이 확산되었습니다. 모두가 좀비가 되었습니다...';
+            } else if (stats.morale <= 0) {
+                message = '생존자들의 사기가 바닥났습니다. 희망을 잃고 모두 떠나갔습니다...';
+            } else if (stats.morale >= 100) {
+                message = '과도한 낙관주의로 방심했습니다. 좀비 무리에 당했습니다...';
+            }
+            
+            if (message) {
+                document.getElementById('gameOverMessage').textContent = 
+                    message + ` 당신은 ${dayCount}일 동안 생존했습니다.`;
+                document.getElementById('gameOver').classList.add('show');
+            }
+        }
+
+        // 게임 재시작
+        function restartGame() {
+            stats = { food: 50, weapon: 50, infection: 50, morale: 50 };
+            currentEventIndex = 0;
+            dayCount = 1;
+            researchSupported = false;
+            document.getElementById('dayCount').textContent = dayCount;
+            document.getElementById('gameOver').classList.remove('show');
+            
+            // 게임 오버 타이틀 초기화
+            const gameOverTitle = document.querySelector('.game-over-title');
+            gameOverTitle.textContent = '게임 오버';
+            gameOverTitle.style.color = '#dc2626';
+            gameOverTitle.style.textShadow = '0 2px 10px rgba(220, 38, 38, 0.5)';
+            
+            shuffleEvents();
+            loadEvent();
+            updateStats();
+        }
+
+        // 이벤트 리스너
+        document.getElementById('leftChoice').addEventListener('click', () => makeChoice(true));
+        document.getElementById('rightChoice').addEventListener('click', () => makeChoice(false));
+
+        // 스와이프 기능
+        let startX = 0;
+        let currentX = 0;
+        let isDragging = false;
+
+        const card = document.getElementById('eventCard');
+
+        card.addEventListener('mousedown', startDrag);
+        card.addEventListener('touchstart', startDrag);
+        card.addEventListener('mousemove', drag);
+        card.addEventListener('touchmove', drag);
+        card.addEventListener('mouseup', endDrag);
+        card.addEventListener('touchend', endDrag);
+        card.addEventListener('mouseleave', endDrag);
+
+        function startDrag(e) {
+            isDragging = true;
+            startX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+            card.classList.add('dragging');
+        }
+
+        function drag(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+            currentX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+            const diff = currentX - startX;
+            card.style.transform = `translateX(${diff}px) rotate(${diff * 0.1}deg)`;
+        }
+
+        function endDrag(e) {
+            if (!isDragging) return;
+            isDragging = false;
+            card.classList.remove('dragging');
+            
+            const diff = currentX - startX;
+            const threshold = 100;
+            
+            if (Math.abs(diff) > threshold) {
+                makeChoice(diff < 0);
+            }
+            
+            card.style.transform = '';
+            startX = 0;
+            currentX = 0;
+        }
+
+        // 게임 시작
+        init();
+    </script>
+</body>
+</html>
